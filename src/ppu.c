@@ -86,8 +86,8 @@ static inline void draw_scanline(ppu_t* const p, byte scanline)
 		{
 			if (count >= 10) break;
 
-			byte yPos = rb(p, oam_addr++) - 16;
-			byte xPos = rb(p, oam_addr++) - 8;
+			int16_t yPos = rb(p, oam_addr++) - 16;
+			int16_t xPos = rb(p, oam_addr++) - 8;
 			byte tile_index = rb(p, oam_addr++);
 			byte attributes = rb(p, oam_addr++);
 
