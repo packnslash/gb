@@ -22,32 +22,39 @@ const byte bootrom[256] = {
 static byte rb(void* userdata, word addr)
 {
 	gameboy* gb = (gameboy*)userdata;
+
+	byte val = 0xFF;
 	
 	if (addr < 0x100 && gb->memory[0xFF50] == 0)
 	{
-		return bootrom[addr];
+		val = bootrom[addr];
 	}
 
-	if (addr < 0x8000 || (addr >= 0xA000 && addr < 0xC000))
+	else if (cartridge_read(&gb->cartridge, addr, &val))
 	{
-		return cartridge_read(&gb->cartridge, addr);
+		// read from cartridge
 	}
 
-	if (addr == 0xFF00)
+	else if (addr == 0xFF00)
 	{
 		if ((gb->memory[0xFF00] & 0x20) == 0)
-			return gb->joypad & 0xF;
+			val = gb->joypad & 0xF;
 		else if ((gb->memory[0xFF00] & 0x10) == 0)
-			return gb->joypad >> 4;
-		return 0xFF;
+			val = gb->joypad >> 4;
+		else val = 0xFF;
 	}
 
-	if (addr == 0xFF04)
+	else if (addr == 0xFF04)
 	{
-		return gb->timers.div;
+		val = gb->timers.div;
 	}
 
-	return gb->memory[addr];
+	else
+	{
+		val = gb->memory[addr];
+	}
+
+	return val;
 }
 
 static void wb(void* userdata, word addr, byte val)
@@ -59,9 +66,9 @@ static void wb(void* userdata, word addr, byte val)
 		printf("cant write to boot rom!\n");
 	}
 
-	else if (addr < 0x8000 || (addr >= 0xA000 && addr < 0xC000))
+	else if (cartridge_write(&gb->cartridge, addr, val))
 	{
-		cartridge_write(&gb->cartridge, addr, val);
+		// wrote to cartridge
 	}
 
 	else if (addr == 0xFF00) // Joypad
@@ -82,6 +89,7 @@ static void wb(void* userdata, word addr, byte val)
 			gb->memory[0xFE00 + i] = gb->memory[addr + i];	// use memcpy?
 		}
 	}
+
 	else
 	{
 		gb->memory[addr] = val;

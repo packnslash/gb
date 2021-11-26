@@ -24,5 +24,5 @@ typedef struct
 
 int cartidge_init(cartridge_t* const cart);
 int cartridge_load(cartridge_t* const cart, const char* filename, word addr);
-void cartridge_write(cartridge_t* const cart, word addr, byte val);
-byte cartridge_read(cartridge_t* const cart, word addr);
+bool cartridge_write(cartridge_t* const cart, word addr, byte val);
+bool cartridge_read(cartridge_t* const cart, word addr, byte * val);

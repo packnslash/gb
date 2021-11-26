@@ -48,6 +48,8 @@ int cartridge_load(cartridge_t* const cart, const char* filename, word addr)
 	case 0x3: cart->mbc = 1; break;
 	case 0x5:
 	case 0x6: cart->mbc = 2; break;
+	case 0xF:
+	case 0x10:
 	case 0x11:
 	case 0x12:
 	case 0x13: cart->mbc = 3; break;
@@ -57,7 +59,7 @@ int cartridge_load(cartridge_t* const cart, const char* filename, word addr)
 	return 0;
 }
 
-void cartridge_write(cartridge_t* const cart, word addr, byte val)
+bool cartridge_write(cartridge_t* const cart, word addr, byte val)
 {
 	if (addr < 0x2000 && (cart->mbc == 1 || cart->mbc == 2 || cart->mbc == 3))
 	{
@@ -147,33 +149,43 @@ void cartridge_write(cartridge_t* const cart, word addr, byte val)
 		{
 			cart->ram[addr - 0xA000 + cart->ram_bank * 0x2000] = val;
 		}
+
+		return true;
 	}
+
+	if (addr < 0x8000) return true;
+	
+	return false;
 }
 
-byte cartridge_read(cartridge_t* const cart, word addr)
+bool cartridge_read(cartridge_t* const cart, word addr, byte * val)
 {
 	if (addr < 0x4000)
 	{
-		return cart->rom[addr];
+		*val = cart->rom[addr];
+		return true;
 	}
 
 	if (addr < 0x8000)
 	{
-		return cart->rom[addr - 0x4000 + cart->rom_bank * 0x4000];
+		*val = cart->rom[addr - 0x4000 + cart->rom_bank * 0x4000];
+		return true;
 	}
 
 	if (addr >= 0xA000 && addr < 0xC000)
 	{
 		if (cart->mbc == 3 && cart->rtc_enable)
 		{
-			return 0x00;
+			*val = 0x00;
+			return true;
 		}
 
 		if (cart->ram_enable)
 		{
-			return cart->ram[addr - 0xA000 + cart->ram_bank * 0x2000];
+			*val = cart->ram[addr - 0xA000 + cart->ram_bank * 0x2000];
+			return true;
 		}
 	}
 
-	return 0xFF;
+	return false;
 }
