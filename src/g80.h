@@ -12,9 +12,6 @@ typedef uint16_t word;
 #define FRAMERATE 59.7275
 #define CLOCKSPEED 4194304
 
-#define SCREEN_WIDTH 160
-#define SCREEN_HEIGHT 144
-
 typedef struct g80 {
 
 	byte(*read_byte)(void*, word);
@@ -30,19 +27,6 @@ typedef struct g80 {
 	bool halted : 1;
 	bool iff : 1;
 	int interrupt_delay;
-	
-	int scanline_counter;
-	int divider_counter;
-	int timer_counter;
-
-	uint32_t screen_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
-	uint32_t bg_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
-	uint32_t wn_buffer[SCREEN_WIDTH * SCREEN_HEIGHT];
-
-	uint32_t colors[4];
-
-	byte internal_scanline;
-	byte div;
 
 	bool bp;
 
@@ -50,6 +34,4 @@ typedef struct g80 {
 
 void g80_init(g80* const c);
 int g80_step(g80* const c);
-void ppu_step(g80* const c, int elapsed);
-void timer_step(g80* const c, int elapsed);
 void process_interrupts(g80* const c);

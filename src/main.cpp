@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include <map>
 #include <string>
 #include <SDL.h>
@@ -8,7 +7,7 @@ extern "C"
 	#include "emulator.h"
 }
 
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
 
@@ -728,22 +727,7 @@ static inline int start()
 	disassemble(0x0000, 0xFFFF);
 #endif
 
-	if (gameboy_load_boot_rom(&gb, "roms/dmg.bin") != 0) return 1;
-	if (gameboy_load_rom(&gb, "roms/pokemonblue.gb", 0x0000) != 0) return 1;
-
-	switch (gb.cartridge[0x147])
-	{
-	case 0x0: gb.mbc = 0; break;
-	case 0x1:
-	case 0x2:
-	case 0x3: gb.mbc = 1; break;
-	case 0x5:
-	case 0x6: gb.mbc = 2; break;
-	case 0x11:
-	case 0x12:
-	case 0x13: gb.mbc = 3; break;
-	default: printf("MBC %02X not supported!\n", gb.cartridge[0x147]); return 1;
-	}
+	if (cartridge_load(&gb.cartridge, "roms/pokemonblue.gb", 0x0000) != 0) return 1;
 			
 	return 0;
 }
@@ -770,7 +754,7 @@ static inline void render()
 #ifdef DEBUG
 		memcpy(pixels, screen, pitch * SCREEN_HEIGHT);
 #else
-		memcpy(pixels, gb.cpu.screen_buffer, pitch * SCREEN_HEIGHT);
+		memcpy(pixels, gb.ppu.screen_buffer, pitch * SCREEN_HEIGHT);
 #endif
 	}
 
@@ -882,9 +866,9 @@ static inline void update()
 			int elapsed = gb.cpu.cyc - cyc;
 			count += elapsed;
 
-			timer_step(&gb.cpu, elapsed);
+			timers_step(&gb.timers, elapsed);
 
-			ppu_step(&gb.cpu, elapsed);
+			ppu_step(&gb.ppu, elapsed);
 
 			process_interrupts(&gb.cpu);
 

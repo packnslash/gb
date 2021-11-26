@@ -1,6 +1,23 @@
-#define _CRT_SECURE_NO_WARNINGS
-
 #include "emulator.h"
+
+const byte bootrom[256] = {
+	0x31, 0xFE, 0xFF, 0xAF, 0x21, 0xFF, 0x9F, 0x32, 0xCB, 0x7C, 0x20, 0xFB, 0x21, 0x26, 0xFF, 0x0E,
+	0x11, 0x3E, 0x80, 0x32, 0xE2, 0x0C, 0x3E, 0xF3, 0xE2, 0x32, 0x3E, 0x77, 0x77, 0x3E, 0xFC, 0xE0,
+	0x47, 0x11, 0x04, 0x01, 0x21, 0x10, 0x80, 0x1A, 0xCD, 0x95, 0x00, 0xCD, 0x96, 0x00, 0x13, 0x7B,
+	0xFE, 0x34, 0x20, 0xF3, 0x11, 0xD8, 0x00, 0x06, 0x08, 0x1A, 0x13, 0x22, 0x23, 0x05, 0x20, 0xF9,
+	0x3E, 0x19, 0xEA, 0x10, 0x99, 0x21, 0x2F, 0x99, 0x0E, 0x0C, 0x3D, 0x28, 0x08, 0x32, 0x0D, 0x20,
+	0xF9, 0x2E, 0x0F, 0x18, 0xF3, 0x67, 0x3E, 0x64, 0x57, 0xE0, 0x42, 0x3E, 0x91, 0xE0, 0x40, 0x04,
+	0x1E, 0x02, 0x0E, 0x0C, 0xF0, 0x44, 0xFE, 0x90, 0x20, 0xFA, 0x0D, 0x20, 0xF7, 0x1D, 0x20, 0xF2,
+	0x0E, 0x13, 0x24, 0x7C, 0x1E, 0x83, 0xFE, 0x62, 0x28, 0x06, 0x1E, 0xC1, 0xFE, 0x64, 0x20, 0x06,
+	0x7B, 0xE2, 0x0C, 0x3E, 0x87, 0xE2, 0xF0, 0x42, 0x90, 0xE0, 0x42, 0x15, 0x20, 0xD2, 0x05, 0x20,
+	0x4F, 0x16, 0x20, 0x18, 0xCB, 0x4F, 0x06, 0x04, 0xC5, 0xCB, 0x11, 0x17, 0xC1, 0xCB, 0x11, 0x17,
+	0x05, 0x20, 0xF5, 0x22, 0x23, 0x22, 0x23, 0xC9, 0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B,
+	0x03, 0x73, 0x00, 0x83, 0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
+	0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63, 0x6E, 0x0E, 0xEC, 0xCC,
+	0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E, 0x3C, 0x42, 0xB9, 0xA5, 0xB9, 0xA5, 0x42, 0x3C,
+	0x21, 0x04, 0x01, 0x11, 0xA8, 0x00, 0x1A, 0x13, 0xBE, 0x20, 0xFE, 0x23, 0x7D, 0xFE, 0x34, 0x20,
+	0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x20, 0xFE, 0x3E, 0x01, 0xE0, 0x50,
+};
 
 static byte rb(void* userdata, word addr)
 {
@@ -8,32 +25,12 @@ static byte rb(void* userdata, word addr)
 	
 	if (addr < 0x100 && gb->memory[0xFF50] == 0)
 	{
-		return gb->bootrom[addr];
+		return bootrom[addr];
 	}
 
-	if (addr < 0x4000)
+	if (addr < 0x8000 || (addr >= 0xA000 && addr < 0xC000))
 	{
-		return gb->cartridge[addr];
-	}
-
-	if (addr >= 0x4000 && addr < 0x8000)
-	{
-		return gb->cartridge[addr - 0x4000 + gb->rom_bank * 0x4000];
-	}
-
-	if (addr >= 0xA000 && addr < 0xC000)
-	{
-		if (gb->mbc == 3 && gb->rtc_enable)
-		{
-			return 0x00;
-		}
-
-		if (gb->ram_enable)
-		{
-			return gb->ram[addr - 0xA000 + gb->ram_bank * 0x2000];
-		}
-
-		return 0xFF;
+		return cartridge_read(&gb->cartridge, addr);
 	}
 
 	if (addr == 0xFF00)
@@ -47,7 +44,7 @@ static byte rb(void* userdata, word addr)
 
 	if (addr == 0xFF04)
 	{
-		return gb->cpu.div;
+		return gb->timers.div;
 	}
 
 	return gb->memory[addr];
@@ -62,110 +59,19 @@ static void wb(void* userdata, word addr, byte val)
 		printf("cant write to boot rom!\n");
 	}
 
-	else if (addr < 0x8000)
+	else if (addr < 0x8000 || (addr >= 0xA000 && addr < 0xC000))
 	{
-		// printf("writing to rom addr: %04x (%02X)!\n", addr, val);
-
-		if (addr < 0x2000 && (gb->mbc == 1 || gb->mbc == 2 || gb->mbc == 3))
-		{
-			if (gb->mbc == 2 && (addr & 0x10) == 0x10)
-				return;
-
-			if (gb->mbc == 3)
-				gb->rtc_enable = (val & 0xF) == 0xA;
-
-			gb->ram_enable = (val & 0xF) == 0xA;
-			
-		}
-		else if (addr >= 0x2000 && addr < 0x4000 && (gb->mbc == 1 || gb->mbc == 2 || gb->mbc == 3))
-		{
-			if (gb->mbc == 1)
-			{
-				gb->rom_bank &= ~0x1F;
-				gb->rom_bank |= (val & 0x1F);
-				
-			}
-			else if (gb->mbc == 2)
-			{
-				gb->rom_bank = val & 0xF;
-			}
-			else if (gb->mbc == 3)
-			{
-				gb->rom_bank &= ~0x7F;
-				gb->rom_bank |= (val & 0x7F);
-			}
-
-			if (gb->rom_bank == 0)
-				gb->rom_bank = 1;
-		}
-		else if (addr >= 0x4000 && addr < 0x6000)
-		{
-			if (gb->mbc == 1)
-			{
-				if (gb->rom_enable)
-				{
-					gb->rom_bank &= ~0xE0;
-					gb->rom_bank |= (val & 0xE0);
-					if (gb->rom_bank == 0)
-						gb->rom_bank = 1;
-				}
-				else
-				{
-					gb->ram_bank = val & 0x3;
-				}
-			}
-			else if (gb->mbc == 3)
-			{
-				if (val <= 0x3)
-				{
-					gb->ram_bank = val & 0x3;
-					gb->rtc_enable = false;
-				}
-				else if (val >= 0x8 && val <= 0xC)
-				{
-					gb->rtc_enable = true;
-				}
-			}
-		}
-		else if (addr >= 0x6000)
-		{
-			if (gb->mbc == 1)
-			{
-				gb->rom_enable = (val & 0x1) == 0;
-				if (gb->rom_enable)
-					gb->ram_bank = 0;
-			}
-			else if (gb->mbc == 3)
-			{
-				if (gb->latch_zero && val == 1)
-				{
-					gb->latched = !gb->latched;
-				}
-				gb->latch_zero = (val == 0);
-			}
-		}
+		cartridge_write(&gb->cartridge, addr, val);
 	}
 
-	else if (addr >= 0xA000 && addr < 0xC000)
-	{
-		if (gb->rtc_enable)
-		{
-			// write to RTC
-		}
-		else if (gb->ram_enable)
-		{
-			gb->ram[addr - 0xA000 + gb->ram_bank * 0x2000] = val;
-		}
-	}
-
-	else if (addr == 0xFF00)
+	else if (addr == 0xFF00) // Joypad
 	{
 		gb->memory[addr] = val & 0xF0;
 	}
 
 	else if (addr == 0xFF04) // DIV
 	{
-		gb->cpu.div = 0;
+		gb->timers.div = 0;
 	}
 
 	else if (addr == 0xFF46) // DMA
@@ -189,69 +95,22 @@ void gameboy_init(gameboy* const gb)
 	gb->cpu.read_byte = rb;
 	gb->cpu.write_byte = wb;
 
-	memset(gb->cartridge, 0, sizeof(gb->cartridge));
-	memset(gb->memory, 0, sizeof(gb->memory));
-	memset(gb->ram, 0, sizeof(gb->ram));
+	cartidge_init(&gb->cartridge);
 
-	memset(gb->cpu.screen_buffer, 0, sizeof(gb->cpu.screen_buffer));
-	memset(gb->cpu.bg_buffer, 0, sizeof(gb->cpu.bg_buffer));
-	memset(gb->cpu.wn_buffer, 0, sizeof(gb->cpu.wn_buffer));
+	ppu_init(&gb->ppu);
+	gb->ppu.userdata = gb;
+	gb->ppu.read_byte = rb;
+	gb->ppu.write_byte = wb;
+
+	timers_init(&gb->timers);
+	gb->timers.userdata = gb;
+	gb->timers.read_byte = rb;
+	gb->timers.write_byte = wb;
+
+	memset(gb->memory, 0, sizeof(gb->memory));
 
 	gb->memory[0xFF0F] = 0xe0;
 	gb->memory[0xFF50] = 1;
 
 	gb->joypad = 0xFF;
-	gb->rom_bank = 1;
-	gb->ram_bank = 0;
-	gb->rom_enable = true;
-	gb->ram_enable = false;
-	gb->rtc_enable = false;
-}
-
-int gameboy_load_boot_rom(gameboy* const gb, const char* filename)
-{
-	FILE* f = fopen(filename, "rb");
-	if (f == NULL)
-	{
-		return 1;
-	}
-
-	fseek(f, 0, SEEK_END);
-	size_t file_size = ftell(f);
-	rewind(f);
-
-	if (file_size > 0x100)
-	{
-		return 1;
-	}
-
-	fread(&gb->bootrom[0], 1, file_size, f);
-
-	fclose(f);
-	return 0;
-}
-
-int gameboy_load_rom(gameboy* const gb, const char* filename, word addr)
-{
-	FILE* f = fopen(filename, "rb");
-	if (f == NULL)
-	{
-		printf("cant open file!\n");
-		return 1;
-	}
-
-	fseek(f, 0, SEEK_END);
-	size_t file_size = ftell(f);
-	rewind(f);
-
-	if (file_size > sizeof(gb->cartridge))
-	{
-		printf("file too big!\n");
-		return 1;
-	}
-
-	fread(&gb->cartridge, 1, file_size, f);
-
-	fclose(f);
-	return 0;
 }

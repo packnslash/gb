@@ -3,29 +3,25 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "cartridge.h"
 #include "g80.h"
+#include "ppu.h"
+#include "timers.h"
 
 typedef struct gameboy {
 
-	g80 cpu;
-	byte bootrom[0x100];
-	byte cartridge[0x200000];
-	byte memory[0x10000];
-	byte ram[0x8000];
+	cartridge_t cartridge;
 
-	byte mbc;
-	bool rom_enable;
-	byte rom_bank;
-	byte ram_bank;
-	bool ram_enable;
-	bool rtc_enable;
-	bool latch_zero;
-	bool latched;
+	g80 cpu;
+
+	ppu_t ppu;
+
+	timers_t timers;
+
+	byte memory[0x10000];
 
 	byte joypad; // Down, Up, Left, Right, Start, Select, B, A
 
 } gameboy;
 
 void gameboy_init(gameboy* const gb);
-int gameboy_load_boot_rom(gameboy* const gb, const char* filename);
-int gameboy_load_rom(gameboy* const gb, const char* filename, word addr);
