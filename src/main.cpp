@@ -8,6 +8,7 @@ extern "C"
 }
 
 // #define DEBUG
+#define SCALE 1
 
 #ifdef DEBUG
 
@@ -156,28 +157,26 @@ static inline void draw_tiles(int x, int y)
 {
 	word addr = 0x8000;
 
-	for (int ty = 0; ty < 12; ty++)
-	{
-		for (int tx = 0; tx < 32; tx++)
+		for (int ty = 0; ty < 12; ty++)
 		{
-			for (int py = 0; py < 8; py++)
+			for (int tx = 0; tx < 32; tx++)
 			{
-				byte lo = gb.memory[addr++];
-				byte hi = gb.memory[addr++];
-
-				for (int px = 0; px < 8; px++)
+				for (int py = 0; py < 8; py++)
 				{
-					byte b = 1 << (7 - px);
+					byte lo = gb.memory[addr++];
+					byte hi = gb.memory[addr++];
 
-					byte color = ((lo & b) != 0) | ((hi & b) != 0) << 1;
+					for (int px = 0; px < 8; px++)
+					{
+						byte b = 1 << (7 - px);
 
-					
+						byte color = ((lo & b) != 0) | ((hi & b) != 0) << 1;
 
-					screen[(x + px + tx * 8) + (y + py + ty * 8) * SCREEN_WIDTH] = gb.ppu.colors[color];
+						screen[(x + px + tx * 8) + (y + py + ty * 8) * SCREEN_WIDTH] = gb.ppu.colors[color];
+					}
 				}
 			}
 		}
-	}
 }
 
 static inline void draw_tile(int index, int x, int y)
@@ -886,7 +885,7 @@ int main(int argc, char** argv)
 {
 	SDL_Init(SDL_INIT_VIDEO);
 
-	SDL_Window* window = SDL_CreateWindow("Gameboy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*2, SCREEN_HEIGHT*2, SDL_WINDOW_SHOWN);
+	SDL_Window* window = SDL_CreateWindow("Gameboy", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH*SCALE, SCREEN_HEIGHT*SCALE, SDL_WINDOW_SHOWN);
 
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
