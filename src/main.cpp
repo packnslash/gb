@@ -7,7 +7,7 @@ extern "C"
 	#include "emulator.h"
 }
 
-//#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 
@@ -118,10 +118,6 @@ static inline void draw_cpu(int x, int y)
 	draw_string(x + 20, y + 70, "N", (gb.cpu.nf == 0) ? colors[3] : colors[2], 1);
 	draw_string(x + 40, y + 70, "H", (gb.cpu.hf == 0) ? colors[3] : colors[2], 1);
 	draw_string(x + 60, y + 70, "C", (gb.cpu.cf == 0) ? colors[3] : colors[2], 1);
-
-	//draw_string(x, y,      " D: " + hex(gb.cpu.div, 2), colors[3], 1);
-	//draw_string(x, y + 15, " C: " + hex(gb.cpu.divider_counter, 3), colors[3], 1);
-	//draw_string(x, y + 30, " T: " + hex(gb.memory[0xFF05], 2), ((gb.memory[0xFF07] & 4) == 4) ? colors[2] : colors[3], 1);
 }
 
 static inline void draw_code(int x, int y, int nLines)
@@ -177,7 +173,7 @@ static inline void draw_tiles(int x, int y)
 
 					
 
-					screen[(x + px + tx * 8) + (y + py + ty * 8) * SCREEN_WIDTH] = gb.cpu.colors[color];
+					screen[(x + px + tx * 8) + (y + py + ty * 8) * SCREEN_WIDTH] = gb.ppu.colors[color];
 				}
 			}
 		}
@@ -207,7 +203,7 @@ static inline void draw_tile(int index, int x, int y)
 			byte color = ((lo & (1 << b)) != 0) | (((hi & (1 << b)) != 0) << 1);
 			byte palette = gb.memory[0xFF47];
 
-			screen[(x + px) + (y + py) * SCREEN_WIDTH] = gb.cpu.colors[(palette >> (color * 2)) & 3];
+			screen[(x + px) + (y + py) * SCREEN_WIDTH] = gb.ppu.colors[(palette >> (color * 2)) & 3];
 		}
 	}
 }
@@ -282,10 +278,10 @@ static inline void draw_screen(int x, int y, bool draw_scanline, bool draw_windo
 	{
 		for (int px = 0; px < 160; px++)
 		{
-			draw(x + px + 170, y + py, gb.cpu.bg_buffer[px + py * 160], false);
-			draw(x + px + 170 + 170, y + py, gb.cpu.wn_buffer[px + py * 160], false);
+			draw(x + px + 170, y + py, gb.ppu.bg_buffer[px + py * 160], false);
+			draw(x + px + 170 + 170, y + py, gb.ppu.wn_buffer[px + py * 160], false);
 
-			draw(x + px, y + py, gb.cpu.screen_buffer[px + py * 160], false);
+			draw(x + px, y + py, gb.ppu.screen_buffer[px + py * 160], false);
 		}
 	}
 
@@ -361,7 +357,7 @@ static inline void draw_lcd(int x, int y)
 	draw_string(x, y + 45, "LYC: " + hex(gb.memory[0xFF45], 2), colors[3], 1);
 	draw_string(x, y + 60, "WX:  " + hex(gb.memory[0xFF4B], 2), colors[3], 1);
 	draw_string(x, y + 75, "WY:  " + hex(gb.memory[0xFF4A], 2), colors[3], 1);
-	draw_string(x, y + 90, "ILY: " + hex(gb.cpu.internal_scanline, 2), colors[3], 1);
+	draw_string(x, y + 90, "ILY: " + hex(gb.ppu.internal_scanline, 2), colors[3], 1);
 }
 
 static inline void draw_int(int x, int y)
@@ -727,7 +723,7 @@ static inline int start()
 	disassemble(0x0000, 0xFFFF);
 #endif
 
-	if (cartridge_load(&gb.cartridge, "roms/pokemonblue.gb", 0x0000) != 0) return 1;
+	if (cartridge_load(&gb.cartridge, "roms/pokemongold.gbc", 0x0000) != 0) return 1;
 			
 	return 0;
 }
@@ -792,7 +788,7 @@ static inline void update()
 					int cyc = gb.cpu.cyc;
 					g80_step(&gb.cpu);
 					int elapsed = gb.cpu.cyc - cyc;
-					ppu_step(&gb.cpu, elapsed);
+					ppu_step(&gb.ppu, elapsed);
 				}
 				break;
 
@@ -807,9 +803,9 @@ static inline void update()
 						int elapsed = gb.cpu.cyc - cyc;
 						count += elapsed;
 
-						timer_step(&gb.cpu, elapsed);
+						timers_step(&gb.timers, elapsed);
 
-						ppu_step(&gb.cpu, elapsed);
+						ppu_step(&gb.ppu, elapsed);
 
 						process_interrupts(&gb.cpu);
 
