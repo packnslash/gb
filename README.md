@@ -1,8 +1,7 @@
 # gb
 Completely non-unique DMG emulator
 
-CAN SOMEONE TELL ME HOW TO LINK SDL2 INTO A MAKE FILE USING POWERSHELL AND SDL2 from source ???
-Until then, build it yourself :)
+Im not smart enough to make a Makefile that links SDL correctly, so build it yourself :)
 
 ## Features
     - Fairly accurate CPU (passes blarggs cpu_instrs)
